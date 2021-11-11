@@ -19,7 +19,6 @@ previous_hashing, and a nonce (Number used once).
 These blocks are hashed and chained in the block chain
 """
 
-
 class Block:
     """
     Initializes a single block, an atomic unit within a blockchain
@@ -31,29 +30,28 @@ class Block:
     :param nonce:           integer,    A nonce is a number used once, it is used to help sign our blocks
     """
 
-    def __init__(self, index, transactions, timestamp, previous_hash, hasher, nonce=0 ):
+    def __init__(self, index, transactions, timestamp, previous_hash, nonce=0):
         self.index = index
         self.transactions = transactions
         self.timestamp = timestamp
         self.previous_hash = previous_hash
         self.nonce = nonce
-        self.hasher = hasher
+
 
     """
     Converts the block to json and computes its hash
     :returns:   the block as a hash
     """
 
-    def compute_hash(self):
+    def compute_hash(self, hasher):
         block_string = json.dumps(self.__dict__, sort_keys=True)
-        return hashlib.sha256(block_string.encode()).hexdigest()
+        return hasher.hash(string=block_string)
 
 
 """
 This class represents the blockchain. 
 It contains the methods for creating and proving new blocks as well as adding them to the chain
 """
-
 
 class Blockchain:
     """
@@ -62,11 +60,13 @@ class Blockchain:
     simply the number of 0s that need to be prepended to the hash function
     """
 
-    def __init__(self, difficulty):
+    def __init__(self, difficulty, hasher):
         self.chain = []
         self.unconfirmed_transactions = []
         self.difficulty = difficulty
+        self.hasher = hasher
         self.create_genesis_block()
+
 
     """
     Creates the genesis (initial) block in the block chain 
@@ -74,7 +74,7 @@ class Blockchain:
 
     def create_genesis_block(self):
         genesis_block = Block(0, [], time.time(), "0")
-        genesis_block.hash = genesis_block.compute_hash()
+        genesis_block.hash = genesis_block.compute_hash(self.hasher)
         self.chain.append(genesis_block)
 
     """
@@ -95,13 +95,13 @@ class Blockchain:
     def proof_of_work(self, block):
         # init the block nonce and hash
         block.nonce = 0
-        computed_hash = block.compute_hash()
+        computed_hash = block.compute_hash(self.hasher)
         # continue calculating the block hash with a new nonce until the block hash matches our desired signature
         while not computed_hash.startswith('0'*self.difficulty):
             block.nonce += 1
-            computed_hash = block.compute_hash()
+            computed_hash = block.compute_hash(self.hasher)
 
-        # when it does retunr the hash
+        # when it does return the hash
         return computed_hash
 
     """
@@ -114,7 +114,7 @@ class Blockchain:
     """
 
     def is_valid_proof(self, block, block_hash):
-        return block_hash.startswith('0' * self.difficulty) and block_hash == block.compute_hash()
+        return block_hash.startswith('0' * self.difficulty) and block_hash == block.compute_hash(self.hasher)
 
     """
     Adds a transaction to the transaction listing
@@ -184,14 +184,47 @@ class Blockchain:
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    print("Welcome to my basic blockchain demo")
-    difficulty = input("To initialize the blockchain, please provide an integer difficulty (1-5): ")
-    blockchain = Blockchain(int(difficulty))
-    transaction = ""
-    while transaction != "quit":
-        transaction = input("Input Transaction Message :")
-        if transaction == "mine":
-            blockchain.mine()
-        else:
+    list_of_hashers = []                # list storing hashing objects
+    hasher_performance_dict = {}        # a dictionary which is used to store the performance data
+
+
+    # create the hashers
+    list_of_hashers.append(MD5Strategy())
+    list_of_hashers.append(SHA256Strategy())
+    list_of_hashers.append(SHA512Strategy())
+    list_of_hashers.append(SHA3256Strategy())
+    list_of_hashers.append(SHA3512Strategy())
+    list_of_hashers.append(BLAKE2BStrategy())
+    list_of_hashers.append(BLAKE2SStrategy())
+
+    # get difficultly from user
+    difficulty = int(input("Input Difficulty Level (1-4): "))
+    while difficulty < 1 or difficulty > 4:
+        difficulty = int(input("Invalid Difficulty, Please Enter Valid Value (1-4): "))
+
+    # get transaction from user
+    transaction = input("Input Repeated Transaction String: ")
+
+    # Iterate through the hashers
+    for hasher in list_of_hashers:
+        # create the blockchain
+        blockchain = Blockchain(difficulty=difficulty, hasher=hasher)
+        # initialize our time data
+        average_time = 0
+        max_time = 0
+        min_time = 10000
+        for i in range(0, 100):
             blockchain.add_new_transaction(transaction)
-    print(blockchain.get_chain())
+            start_count = time.perf_counter()
+            blockchain.mine()
+            end_count = time.perf_counter()
+            time_taken = end_count - start_count
+            average_time += time_taken
+            if time_taken > max_time:
+                max_time = time_taken
+            elif time_taken < min_time:
+                min_time = time_taken
+        average_time = average_time/100
+        hasher_performance_dict[hasher.name()] = {'average time': average_time, 'max_time': max_time, 'min_time': min_time}
+        print (hasher.name())
+        print(hasher_performance_dict[hasher.name()])
