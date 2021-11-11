@@ -9,8 +9,8 @@ and testing their performance via computation time, cpu monitoring, and more
 :last_edit     10/29/21
 """
 import time
-import hashlib
 import json
+from hash import *
 
 """
 This is the Block class. In blockchain, blocks are the atomic units of the system
@@ -27,60 +27,17 @@ class Block:
     :param transactions:    string,     The data we wish to store, in this version it is just any string
     :param timestamp:       time,       The time stamp of the transaction
     :param previous_hash:   string,     The string of the previous hash in the block chain
+    :param hasher:          hasher,     The hash strategy that used
     :param nonce:           integer,    A nonce is a number used once, it is used to help sign our blocks
     """
 
-    def __init__(self, index, transactions, timestamp, previous_hash, nonce=0):
+    def __init__(self, index, transactions, timestamp, previous_hash, hasher, nonce=0 ):
         self.index = index
         self.transactions = transactions
         self.timestamp = timestamp
         self.previous_hash = previous_hash
         self.nonce = nonce
-
-    """
-    Computes the block string hash, using md5
-    :param block_string:    json representing the block
-    :returns:               block_string hashed using md5
-    """
-
-    def compute_hash_md5(self, block_string):
-        return hashlib.md5(block_string.encode()).hexdigest()
-
-    """
-    Computes the block string hash, using sha224
-    :param block_string:    json representing the block
-    :returns:               block_string hashed using sha224
-    """
-
-    def compute_hash_sha224(self, block_string):
-        return hashlib.sha224(block_string.encode()).hexdigest()
-
-    """
-    Computes the block string hash, using sha256
-    :param block_string:    json representing the block
-    :returns:               block_string hashed using sha256
-    """
-
-    def compute_hash_sha256(self, block_string):
-        return hashlib.sha256(block_string.encode()).hexdigest()
-
-    """
-    Computes the block string hash, using sha384
-    :param block_string:    json representing the block
-    :returns:               block_string hashed using sha384
-    """
-
-    def compute_hash_sha384(self, block_string):
-        return hashlib.sha384(block_string.encode()).hexdigest()
-
-    """
-    Computes the block string hash, using sha512
-    :param block_string:    json representing the block
-    :returns:               block_string hashed using sha512
-    """
-
-    def compute_hash_sha512(self, block_string):
-        return hashlib.sha512(block_string.encode()).hexdigest()
+        self.hasher = hasher
 
     """
     Converts the block to json and computes its hash
