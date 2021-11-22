@@ -6,10 +6,9 @@ and testing their performance via computation time, cpu monitoring, and more
 :author       Stephen Cook <sjc5897@rit.edu>
 :language      Python 3
 :date_created  10/29/21
-:last_edit     10/29/21
+:last_edit     11/22/21
 """
-import time
-import json
+import string, random, time, json
 from hash import *
 
 """
@@ -26,7 +25,6 @@ class Block:
     :param transactions:    string,     The data we wish to store, in this version it is just any string
     :param timestamp:       time,       The time stamp of the transaction
     :param previous_hash:   string,     The string of the previous hash in the block chain
-    :param hasher:          hasher,     The hash strategy that used
     :param nonce:           integer,    A nonce is a number used once, it is used to help sign our blocks
     """
 
@@ -60,7 +58,7 @@ class Blockchain:
     simply the number of 0s that need to be prepended to the hash function
     """
 
-    def __init__(self, difficulty, hasher):
+    def __init__(self, difficulty, hasher=SHA256Strategy()):
         self.chain = []
         self.unconfirmed_transactions = []
         self.difficulty = difficulty
@@ -181,6 +179,13 @@ class Blockchain:
             chain_data.append(block.__dict__)
         return json.dumps(chain_data)
 
+"""
+Assist function, generates a random string 
+"""
+def generate_random_string():
+    letters = string.ascii_letters
+    return ''.join(random.choice(letters) for i in range(30))
+
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
@@ -197,34 +202,51 @@ if __name__ == '__main__':
     list_of_hashers.append(BLAKE2BStrategy())
     list_of_hashers.append(BLAKE2SStrategy())
 
-    # get difficultly from user
-    difficulty = int(input("Input Difficulty Level (1-4): "))
-    while difficulty < 1 or difficulty > 4:
-        difficulty = int(input("Invalid Difficulty, Please Enter Valid Value (1-4): "))
-
-    # get transaction from user
-    transaction = input("Input Repeated Transaction String: ")
-
-    # Iterate through the hashers
+    # init the hasher_perfomance_dict
     for hasher in list_of_hashers:
-        # create the blockchain
-        blockchain = Blockchain(difficulty=difficulty, hasher=hasher)
-        # initialize our time data
-        average_time = 0
-        max_time = 0
-        min_time = 10000
-        for i in range(0, 100):
+        hasher_performance_dict[hasher.name()] = {'average_time':0,'max_time':0, 'min_time':0,'runs':0}
+
+    # get difficulty
+    difficulty = int(input ("Input difficulty (1-10): "))
+
+    #Initalize the blockchain
+    blockchain = Blockchain(difficulty= difficulty)
+
+    # iterate through the 1000 trials
+    for i in range(0,1000):
+        # generate the string
+        transaction = generate_random_string()
+        # iterate through hashers
+        for hasher in list_of_hashers:
+            # set hasher
+            blockchain.hasher = hasher
+            hasher_dict = hasher_performance_dict[hasher.name()]
+
+            # add transaction
             blockchain.add_new_transaction(transaction)
+
+            # time the mine
             start_count = time.perf_counter()
             blockchain.mine()
             end_count = time.perf_counter()
             time_taken = end_count - start_count
-            average_time += time_taken
-            if time_taken > max_time:
-                max_time = time_taken
-            elif time_taken < min_time:
-                min_time = time_taken
-        average_time = average_time/100
-        hasher_performance_dict[hasher.name()] = {'average time': average_time, 'max_time': max_time, 'min_time': min_time}
-        print (hasher.name())
-        print(hasher_performance_dict[hasher.name()])
+
+            # peep the stats
+            hasher_dict["average_time"] += time_taken
+            hasher_dict["runs"] += 1
+            if time_taken > hasher_dict["max_time"]:
+                hasher_dict["max_time"] = time_taken
+            if time_taken < hasher_dict["min_time"] or hasher_dict["min_time"] == 0:
+                hasher_dict["min_time"] = time_taken
+
+            # update the dictionary
+            hasher_performance_dict[hasher.name()] = hasher_dict
+
+    # print results
+    for key in hasher_performance_dict:
+        print("Hashing Algorithm: " + key)
+        value = hasher_performance_dict.get(key)
+        print("\tAverage Time: " + str(value["average_time"]/value["runs"]) + " seconds")
+        print("\tMax Time: " + str(value["max_time"])+ " seconds")
+        print("\tMin Time: " + str(value["min_time"])+ " seconds")
+
